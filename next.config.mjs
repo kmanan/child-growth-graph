@@ -1,2 +1,2 @@
-﻿const nextConfig = {output: "standalone",reactStrictMode: true};
+﻿const nextConfig = {reactStrictMode: true};
 export default nextConfig;
