@@ -56,7 +56,20 @@ export default function GrowthChart({
 
   // Prepare chart data with percentile curves
   const maxAge = Math.max(...relevantMeasurements.map((m) => m.ageMonths));
-  const chartData = [];
+  const chartData: Array<{
+    age: number;
+    p3: number;
+    p5: number;
+    p10: number;
+    p25: number;
+    p50: number;
+    p75: number;
+    p90: number;
+    p95: number;
+    p97: number;
+    measurement?: number;
+    percentile?: number;
+  }> = [];
 
   // Generate percentile curves (5th, 10th, 25th, 50th, 75th, 90th, 95th) with finer granularity
   const maxAgeForChart = Math.max(Math.ceil(maxAge) + 6, 36); // At least 3 years of data
