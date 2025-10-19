@@ -1,11 +1,15 @@
 ﻿"use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { Baby, Calendar, Weight, Ruler, Brain, Apple, Sparkles, Heart, ExternalLink } from "lucide-react";
 import MeasurementForm from "@/components/MeasurementForm";
 import GrowthChart from "@/components/GrowthChart";
-import ThemeToggle from "@/components/ThemeToggle";
 import { MeasurementData } from "@/lib/growthCalculations";
+
+const ThemeToggle = dynamic(() => import("@/components/ThemeToggle"), {
+  ssr: false,
+});
 
 export default function Home() {
   const [measurements, setMeasurements] = useState<MeasurementData[]>([]);
