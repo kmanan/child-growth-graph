@@ -61,22 +61,6 @@ export default function MeasurementForm({
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Child's Name
-          </label>
-          <input
-            type="text"
-            value={childInfo.name}
-            onChange={(e) =>
-              setChildInfo({ ...childInfo, name: e.target.value })
-            }
-            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition"
-            placeholder="Enter name"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
             Sex
           </label>
           <div className="flex gap-4">

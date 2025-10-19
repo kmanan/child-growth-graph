@@ -1,7 +1,6 @@
 ﻿"use client";
 
 import {
-  LineChart,
   Line,
   XAxis,
   YAxis,
@@ -9,7 +8,8 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  ReferenceLine,
+  Scatter,
+  ComposedChart,
 } from "recharts";
 import { MeasurementData, calculatePercentile } from "@/lib/growthCalculations";
 import {
@@ -75,8 +75,8 @@ export default function GrowthChart({
     });
   }
 
-  // Add actual measurements
-  const measurementData = relevantMeasurements.map((m) => {
+  // Add actual measurements as scatter plot data
+  const measurementPoints = relevantMeasurements.map((m) => {
     const value =
       type === "weight"
         ? m.weight!
@@ -109,7 +109,7 @@ export default function GrowthChart({
       <h3 className="text-xl font-semibold mb-4 text-gray-800">{getTitle()}</h3>
 
       <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={chartData}>
+        <ComposedChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis
             dataKey="age"
@@ -157,26 +157,19 @@ export default function GrowthChart({
             strokeDasharray="5 5"
           />
 
-          {/* Actual measurements */}
-          {measurementData.map((point, idx) => (
-            <ReferenceLine
-              key={idx}
-              x={point.age}
-              stroke="transparent"
-              label={{
-                value: `â—`,
-                position: "top",
-                fill: "#8b5cf6",
-                fontSize: 20,
-              }}
-            />
-          ))}
-        </LineChart>
+          {/* Actual measurements as visible scatter points */}
+          <Scatter
+            data={measurementPoints}
+            fill="#8b5cf6"
+            name="Baby's measurements"
+            shape="circle"
+          />
+        </ComposedChart>
       </ResponsiveContainer>
 
       {/* Measurement details */}
       <div className="mt-4 space-y-2">
-        {measurementData.map((point, idx) => (
+        {measurementPoints.map((point, idx) => (
           <div
             key={idx}
             className="flex justify-between items-center text-sm bg-purple-50 px-4 py-2 rounded-lg"
