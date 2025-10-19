@@ -1,2 +1,6 @@
-﻿const nextConfig = {reactStrictMode: true};
+﻿const nextConfig = {
+  reactStrictMode: true,
+  basePath: '/childgrowth',
+  assetPrefix: '/childgrowth',
+};
 export default nextConfig;

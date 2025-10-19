@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import { MeasurementData, getAgeInMonths } from "@/lib/growthCalculations";
+import DatePicker from "./DatePicker";
 
 interface MeasurementFormProps {
   childInfo: {
@@ -97,27 +98,17 @@ export default function MeasurementForm({
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Birth Date
-          </label>
-          <input
-            type="date"
-            value={
-              childInfo.birthDate
-                ? childInfo.birthDate.toISOString().split("T")[0]
-                : ""
-            }
-            onChange={(e) =>
-              setChildInfo({
-                ...childInfo,
-                birthDate: e.target.value ? new Date(e.target.value) : null,
-              })
-            }
-            className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition"
-            required
-          />
-        </div>
+        <DatePicker
+          value={childInfo.birthDate}
+          onChange={(date) =>
+            setChildInfo({
+              ...childInfo,
+              birthDate: date,
+            })
+          }
+          label="Birth Date"
+          required
+        />
       </div>
 
       <hr className="border-gray-200 dark:border-gray-700" />
@@ -128,19 +119,15 @@ export default function MeasurementForm({
           Add Measurement
         </h3>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Measurement Date
-          </label>
-          <input
-            type="date"
-            value={measurementDate}
-            onChange={(e) => setMeasurementDate(e.target.value)}
-            max={new Date().toISOString().split("T")[0]}
-            className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition"
-            required
-          />
-        </div>
+        <DatePicker
+          value={measurementDate ? new Date(measurementDate) : null}
+          onChange={(date) =>
+            setMeasurementDate(date ? date.toISOString().split("T")[0] : "")
+          }
+          label="Measurement Date"
+          required
+          maxDate={new Date()}
+        />
 
         <div className="grid md:grid-cols-3 gap-4">
           <div>
