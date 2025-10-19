@@ -58,20 +58,44 @@ export default function GrowthChart({
   const maxAge = Math.max(...relevantMeasurements.map((m) => m.ageMonths));
   const chartData = [];
 
-  // Generate percentile curves (5th, 50th, 95th)
-  for (let age = 0; age <= Math.ceil(maxAge) + 6; age += 1) {
+  // Generate percentile curves (5th, 10th, 25th, 50th, 75th, 90th, 95th) with finer granularity
+  const maxAgeForChart = Math.max(Math.ceil(maxAge) + 6, 36); // At least 3 years of data
+  for (let age = 0; age <= maxAgeForChart; age += 0.5) {
     const lms = getLMSForAge(dataSource, age);
 
     // Calculate values for different percentiles using inverse LMS
-    const p5 = lms.M * Math.pow(1 + lms.L * lms.S * -1.645, 1 / lms.L);
-    const p50 = lms.M;
-    const p95 = lms.M * Math.pow(1 + lms.L * lms.S * 1.645, 1 / lms.L);
+    // Z-scores: -1.88 (3rd), -1.645 (5th), -1.28 (10th), -0.67 (25th), 0 (50th), 0.67 (75th), 1.28 (90th), 1.645 (95th), 1.88 (97th)
+    const zScores = {
+      p3: -1.88,
+      p5: -1.645,
+      p10: -1.28,
+      p25: -0.674,
+      p50: 0,
+      p75: 0.674,
+      p90: 1.28,
+      p95: 1.645,
+      p97: 1.88
+    };
+
+    const calculateValueFromZScore = (z: number) => {
+      if (lms.L !== 0) {
+        return lms.M * Math.pow(1 + lms.L * lms.S * z, 1 / lms.L);
+      } else {
+        return lms.M * Math.exp(lms.S * z);
+      }
+    };
 
     chartData.push({
-      age,
-      p5: Math.round(p5 * 10) / 10,
-      p50: Math.round(p50 * 10) / 10,
-      p95: Math.round(p95 * 10) / 10,
+      age: Math.round(age * 100) / 100,
+      p3: Math.round(calculateValueFromZScore(zScores.p3) * 10) / 10,
+      p5: Math.round(calculateValueFromZScore(zScores.p5) * 10) / 10,
+      p10: Math.round(calculateValueFromZScore(zScores.p10) * 10) / 10,
+      p25: Math.round(calculateValueFromZScore(zScores.p25) * 10) / 10,
+      p50: Math.round(calculateValueFromZScore(zScores.p50) * 10) / 10,
+      p75: Math.round(calculateValueFromZScore(zScores.p75) * 10) / 10,
+      p90: Math.round(calculateValueFromZScore(zScores.p90) * 10) / 10,
+      p95: Math.round(calculateValueFromZScore(zScores.p95) * 10) / 10,
+      p97: Math.round(calculateValueFromZScore(zScores.p97) * 10) / 10,
     });
   }
 
@@ -108,7 +132,7 @@ export default function GrowthChart({
     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 border border-gray-100 dark:border-gray-700 transition-colors">
       <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">{getTitle()}</h3>
 
-      <ResponsiveContainer width="100%" height={300}>
+      <ResponsiveContainer width="100%" height={400}>
         <ComposedChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis
@@ -129,7 +153,17 @@ export default function GrowthChart({
           />
           <Legend />
 
-          {/* Percentile curves */}
+          {/* Percentile curves - multiple curves for better visualization */}
+          <Line
+            type="monotone"
+            dataKey="p3"
+            stroke="#dc2626"
+            strokeWidth={1.5}
+            dot={false}
+            name="3rd percentile"
+            strokeDasharray="3 3"
+            isAnimationActive={false}
+          />
           <Line
             type="monotone"
             dataKey="p5"
@@ -138,14 +172,52 @@ export default function GrowthChart({
             dot={false}
             name="5th percentile"
             strokeDasharray="5 5"
+            isAnimationActive={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="p10"
+            stroke="#f59e0b"
+            strokeWidth={1.5}
+            dot={false}
+            name="10th percentile"
+            isAnimationActive={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="p25"
+            stroke="#84cc16"
+            strokeWidth={1.5}
+            dot={false}
+            name="25th percentile"
+            isAnimationActive={false}
           />
           <Line
             type="monotone"
             dataKey="p50"
             stroke="#3b82f6"
-            strokeWidth={2}
+            strokeWidth={2.5}
             dot={false}
             name="50th percentile"
+            isAnimationActive={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="p75"
+            stroke="#8b5cf6"
+            strokeWidth={1.5}
+            dot={false}
+            name="75th percentile"
+            isAnimationActive={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="p90"
+            stroke="#ec4899"
+            strokeWidth={1.5}
+            dot={false}
+            name="90th percentile"
+            isAnimationActive={false}
           />
           <Line
             type="monotone"
@@ -155,6 +227,17 @@ export default function GrowthChart({
             dot={false}
             name="95th percentile"
             strokeDasharray="5 5"
+            isAnimationActive={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="p97"
+            stroke="#059669"
+            strokeWidth={1.5}
+            dot={false}
+            name="97th percentile"
+            strokeDasharray="3 3"
+            isAnimationActive={false}
           />
 
           {/* Actual measurements as visible scatter points */}
@@ -163,6 +246,11 @@ export default function GrowthChart({
             fill="#8b5cf6"
             name="Baby's measurements"
             shape="circle"
+            dataKey="measurement"
+            isAnimationActive={false}
+            r={8}
+            stroke="#6d28d9"
+            strokeWidth={2}
           />
         </ComposedChart>
       </ResponsiveContainer>

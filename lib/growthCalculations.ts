@@ -36,22 +36,26 @@ export function calculateZScore(
   }
 }
 
-// Calculate percentile from z-score
+// Calculate percentile from z-score using cumulative distribution function
 export function zScoreToPercentile(zScore: number): number {
-  // Approximation using error function
-  const t = 1 / (1 + 0.2316419 * Math.abs(zScore));
-  const d = 0.3989423 * Math.exp((-zScore * zScore) / 2);
-  const p =
-    d *
-    t *
-    (0.3193815 +
-      t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+  // Use a more accurate approximation of the standard normal CDF
+  // This is the Abramowitz and Stegun approximation
+  const sign = zScore >= 0 ? 1 : -1;
+  const z = Math.abs(zScore) / Math.sqrt(2);
   
-  if (zScore > 0) {
-    return (1 - p) * 100;
-  } else {
-    return p * 100;
-  }
+  // Error function approximation
+  const t = 1 / (1 + 0.3275911 * z);
+  const erf = 1 - (((((
+    + 1.061405429  * t
+    - 1.453152027) * t
+    + 1.421413741) * t
+    - 0.284496736) * t
+    + 0.254829592) * t) * Math.exp(-z * z);
+  
+  // Convert to CDF
+  const cdf = 0.5 * (1 + sign * erf);
+  
+  return cdf * 100;
 }
 
 // Gradual transition function from WHO to CDC (2-5 years)
@@ -88,16 +92,16 @@ export function calculatePercentile(
   };
 }
 
-// Get age in months from birth date
+// Get age in months from birth date (returns fractional months for accuracy)
 export function getAgeInMonths(birthDate: Date, measurementDate: Date): number {
-  const years = measurementDate.getFullYear() - birthDate.getFullYear();
-  const months = measurementDate.getMonth() - birthDate.getMonth();
-  const days = measurementDate.getDate() - birthDate.getDate();
+  // Calculate difference in milliseconds
+  const diffMs = measurementDate.getTime() - birthDate.getTime();
   
-  let totalMonths = years * 12 + months;
-  if (days < 0) {
-    totalMonths -= 1;
-  }
+  // Convert to days
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
   
-  return totalMonths;
+  // Convert days to months (using 30.4375 days per month average)
+  const months = diffDays / 30.4375;
+  
+  return Math.max(0, months);
 }
