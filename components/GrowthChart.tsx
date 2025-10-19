@@ -99,7 +99,45 @@ export default function GrowthChart({
     });
   }
 
-  // Add actual measurements as scatter plot data
+  // Mark measurement points in the chart data
+  relevantMeasurements.forEach((m) => {
+    const value =
+      type === "weight"
+        ? m.weight!
+        : type === "length"
+        ? m.length!
+        : m.headCircumference!;
+
+    const lms = getLMSForAge(dataSource, m.ageMonths);
+    const result = calculatePercentile(value, lms);
+
+    // Find the closest age point in chartData (within 0.1 months)
+    const closestPoint = chartData.reduce((closest, point) => {
+      const distance = Math.abs(point.age - m.ageMonths);
+      const closestDistance = Math.abs(closest.age - m.ageMonths);
+      return distance < closestDistance ? point : closest;
+    }, chartData[0]);
+    
+    if (closestPoint && Math.abs(closestPoint.age - m.ageMonths) < 0.25) {
+      // Add measurement to existing point
+      (closestPoint as any).measurement = value;
+      (closestPoint as any).percentile = result.percentile;
+    }
+  });
+
+  // Sort by age
+  chartData.sort((a, b) => a.age - b.age);
+
+  // Debug logging
+  console.log(`\n========= GrowthChart: ${type} =========`);
+  console.log(`Total data points: ${chartData.length}`);
+  console.log(`Age range: ${chartData[0]?.age} to ${chartData[chartData.length - 1]?.age}`);
+  console.log('First 5 data points:');
+  console.table(chartData.slice(0, 5));
+  console.log('Data points with measurements:');
+  console.table(chartData.filter(d => d.measurement !== undefined));
+  
+  // Extract measurement points for display below chart
   const measurementPoints = relevantMeasurements.map((m) => {
     const value =
       type === "weight"
@@ -133,14 +171,18 @@ export default function GrowthChart({
       <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">{getTitle()}</h3>
 
       <ResponsiveContainer width="100%" height={400}>
-        <ComposedChart data={chartData}>
+        <ComposedChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 10 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis
             dataKey="age"
+            type="number"
+            domain={[0, 'dataMax']}
             label={{ value: "Age (months)", position: "insideBottom", offset: -5 }}
             stroke="#6b7280"
           />
           <YAxis
+            type="number"
+            domain={['auto', 'auto']}
             label={{ value: getUnit(), angle: -90, position: "insideLeft" }}
             stroke="#6b7280"
           />
@@ -163,6 +205,7 @@ export default function GrowthChart({
             name="3rd percentile"
             strokeDasharray="3 3"
             isAnimationActive={false}
+            connectNulls={true}
           />
           <Line
             type="monotone"
@@ -173,6 +216,7 @@ export default function GrowthChart({
             name="5th percentile"
             strokeDasharray="5 5"
             isAnimationActive={false}
+            connectNulls={true}
           />
           <Line
             type="monotone"
@@ -182,6 +226,7 @@ export default function GrowthChart({
             dot={false}
             name="10th percentile"
             isAnimationActive={false}
+            connectNulls={true}
           />
           <Line
             type="monotone"
@@ -191,6 +236,7 @@ export default function GrowthChart({
             dot={false}
             name="25th percentile"
             isAnimationActive={false}
+            connectNulls={true}
           />
           <Line
             type="monotone"
@@ -200,6 +246,7 @@ export default function GrowthChart({
             dot={false}
             name="50th percentile"
             isAnimationActive={false}
+            connectNulls={true}
           />
           <Line
             type="monotone"
@@ -209,6 +256,7 @@ export default function GrowthChart({
             dot={false}
             name="75th percentile"
             isAnimationActive={false}
+            connectNulls={true}
           />
           <Line
             type="monotone"
@@ -218,6 +266,7 @@ export default function GrowthChart({
             dot={false}
             name="90th percentile"
             isAnimationActive={false}
+            connectNulls={true}
           />
           <Line
             type="monotone"
@@ -228,6 +277,7 @@ export default function GrowthChart({
             name="95th percentile"
             strokeDasharray="5 5"
             isAnimationActive={false}
+            connectNulls={true}
           />
           <Line
             type="monotone"
@@ -238,15 +288,15 @@ export default function GrowthChart({
             name="97th percentile"
             strokeDasharray="3 3"
             isAnimationActive={false}
+            connectNulls={true}
           />
 
           {/* Actual measurements as visible scatter points */}
           <Scatter
-            data={measurementPoints}
+            dataKey="measurement"
             fill="#8b5cf6"
             name="Baby's measurements"
             shape="circle"
-            dataKey="measurement"
             isAnimationActive={false}
             r={8}
             stroke="#6d28d9"
