@@ -105,20 +105,22 @@ export default function GrowthChart({
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
-      <h3 className="text-xl font-semibold mb-4 text-gray-800">{getTitle()}</h3>
+    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 border border-gray-100 dark:border-gray-700 transition-colors">
+      <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">{getTitle()}</h3>
 
       <ResponsiveContainer width="100%" height={300}>
         <ComposedChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-gray-600" />
           <XAxis
             dataKey="age"
             label={{ value: "Age (months)", position: "insideBottom", offset: -5 }}
             stroke="#6b7280"
+            className="dark:stroke-gray-400"
           />
           <YAxis
             label={{ value: getUnit(), angle: -90, position: "insideLeft" }}
             stroke="#6b7280"
+            className="dark:stroke-gray-400"
           />
           <Tooltip
             contentStyle={{
@@ -126,6 +128,7 @@ export default function GrowthChart({
               border: "1px solid #e5e7eb",
               borderRadius: "8px",
             }}
+            wrapperClassName="dark:opacity-90"
           />
           <Legend />
 
@@ -172,15 +175,15 @@ export default function GrowthChart({
         {measurementPoints.map((point, idx) => (
           <div
             key={idx}
-            className="flex justify-between items-center text-sm bg-purple-50 px-4 py-2 rounded-lg"
+            className="flex justify-between items-center text-sm bg-purple-50 dark:bg-purple-900/30 px-4 py-2 rounded-lg"
           >
-            <span className="text-gray-600">
+            <span className="text-gray-600 dark:text-gray-300">
               {Math.floor(point.age)} months
             </span>
-            <span className="font-semibold text-gray-800">
+            <span className="font-semibold text-gray-800 dark:text-gray-100">
               {point.measurement} {getUnit()}
             </span>
-            <span className="text-purple-600 font-medium">
+            <span className="text-purple-600 dark:text-purple-400 font-medium">
               {point.percentile}th percentile
             </span>
           </div>

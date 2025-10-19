@@ -60,7 +60,7 @@ export default function MeasurementForm({
       {/* Child Info */}
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Sex
           </label>
           <div className="flex gap-4">
@@ -77,7 +77,7 @@ export default function MeasurementForm({
                 }
                 className="w-4 h-4 text-primary-600 focus:ring-primary-500"
               />
-              <span className="ml-2 text-gray-700">Male</span>
+              <span className="ml-2 text-gray-700 dark:text-gray-300">Male</span>
             </label>
             <label className="flex items-center cursor-pointer">
               <input
@@ -92,13 +92,13 @@ export default function MeasurementForm({
                 }
                 className="w-4 h-4 text-primary-600 focus:ring-primary-500"
               />
-              <span className="ml-2 text-gray-700">Female</span>
+              <span className="ml-2 text-gray-700 dark:text-gray-300">Female</span>
             </label>
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Birth Date
           </label>
           <input
@@ -114,22 +114,22 @@ export default function MeasurementForm({
                 birthDate: e.target.value ? new Date(e.target.value) : null,
               })
             }
-            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition"
+            className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition"
             required
           />
         </div>
       </div>
 
-      <hr className="border-gray-200" />
+      <hr className="border-gray-200 dark:border-gray-700" />
 
       {/* Measurements */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-gray-800">
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
           Add Measurement
         </h3>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Measurement Date
           </label>
           <input
@@ -137,14 +137,14 @@ export default function MeasurementForm({
             value={measurementDate}
             onChange={(e) => setMeasurementDate(e.target.value)}
             max={new Date().toISOString().split("T")[0]}
-            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition"
+            className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition"
             required
           />
         </div>
 
         <div className="grid md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Weight (kg)
             </label>
             <input
@@ -152,13 +152,13 @@ export default function MeasurementForm({
               step="0.01"
               value={weight}
               onChange={(e) => setWeight(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition"
+              className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition placeholder-gray-400 dark:placeholder-gray-500"
               placeholder="3.5"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Length (cm)
             </label>
             <input
@@ -166,13 +166,13 @@ export default function MeasurementForm({
               step="0.1"
               value={length}
               onChange={(e) => setLength(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition"
+              className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition placeholder-gray-400 dark:placeholder-gray-500"
               placeholder="50.0"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Head (cm)
             </label>
             <input
@@ -180,7 +180,7 @@ export default function MeasurementForm({
               step="0.1"
               value={headCircumference}
               onChange={(e) => setHeadCircumference(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition"
+              className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition placeholder-gray-400 dark:placeholder-gray-500"
               placeholder="35.0"
             />
           </div>
@@ -190,7 +190,7 @@ export default function MeasurementForm({
       <button
         type="submit"
         disabled={!childInfo.birthDate}
-        className="w-full bg-gradient-to-r from-primary-600 to-purple-600 text-white py-4 px-6 rounded-lg font-semibold hover:from-primary-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+        className="w-full bg-gradient-to-r from-primary-600 to-purple-600 dark:from-primary-500 dark:to-purple-500 text-white py-4 px-6 rounded-lg font-semibold hover:from-primary-700 hover:to-purple-700 dark:hover:from-primary-600 dark:hover:to-purple-600 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
       >
         <Plus className="w-5 h-5 mr-2" />
         Add Measurement
