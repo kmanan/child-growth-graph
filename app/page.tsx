@@ -1,11 +1,11 @@
 ﻿"use client";
 
 import { useState } from "react";
-import { Baby, Calendar, Weight, Ruler, Brain, Apple, Sparkles, Heart, ExternalLink, Moon, Sun } from "lucide-react";
+import { Baby, Calendar, Weight, Ruler, Brain, Apple, Sparkles, Heart, ExternalLink } from "lucide-react";
 import MeasurementForm from "@/components/MeasurementForm";
 import GrowthChart from "@/components/GrowthChart";
+import ThemeToggle from "@/components/ThemeToggle";
 import { MeasurementData } from "@/lib/growthCalculations";
-import { useTheme } from "./providers";
 
 export default function Home() {
   const [measurements, setMeasurements] = useState<MeasurementData[]>([]);
@@ -18,7 +18,6 @@ export default function Home() {
     sex: "male",
     birthDate: null,
   });
-  const { theme, toggleTheme } = useTheme();
 
   const addMeasurement = (measurement: MeasurementData) => {
     setMeasurements([...measurements, measurement]);
@@ -30,17 +29,7 @@ export default function Home() {
         {/* Header */}
         <div className="text-center mb-12 relative">
           {/* Dark Mode Toggle */}
-          <button
-            onClick={toggleTheme}
-            className="absolute right-0 top-0 p-3 rounded-lg bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-all border border-gray-200 dark:border-gray-700"
-            aria-label="Toggle dark mode"
-          >
-            {theme === "dark" ? (
-              <Sun className="w-5 h-5 text-yellow-500" />
-            ) : (
-              <Moon className="w-5 h-5 text-gray-700" />
-            )}
-          </button>
+          <ThemeToggle />
 
           <div className="flex items-center justify-center mb-4">
             <Baby className="w-12 h-12 text-primary-600 dark:text-primary-400 mr-3" />

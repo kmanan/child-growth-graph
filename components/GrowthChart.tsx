@@ -110,17 +110,15 @@ export default function GrowthChart({
 
       <ResponsiveContainer width="100%" height={300}>
         <ComposedChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-gray-600" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis
             dataKey="age"
             label={{ value: "Age (months)", position: "insideBottom", offset: -5 }}
             stroke="#6b7280"
-            className="dark:stroke-gray-400"
           />
           <YAxis
             label={{ value: getUnit(), angle: -90, position: "insideLeft" }}
             stroke="#6b7280"
-            className="dark:stroke-gray-400"
           />
           <Tooltip
             contentStyle={{
@@ -128,7 +126,6 @@ export default function GrowthChart({
               border: "1px solid #e5e7eb",
               borderRadius: "8px",
             }}
-            wrapperClassName="dark:opacity-90"
           />
           <Legend />
 
