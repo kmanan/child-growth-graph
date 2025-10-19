@@ -4,13 +4,13 @@ A modern, responsive web application for tracking children's growth using WHO an
 
 ## Features
 
-- ðŸ“Š Beautiful, interactive growth charts using Recharts
-- ðŸ“± Fully responsive design for desktop and mobile
-- ðŸŽ¨ Modern UI with Tailwind CSS
-- ðŸ“ˆ WHO 2006 Growth Standards and CDC 2000 Growth Reference
-- ðŸ”„ Gradual transition between WHO and CDC (2-5 years)
-- ðŸ’œ Track weight, length/height, and head circumference
-- ðŸ“‰ Percentile calculations and visualizations
+- 📊 Beautiful, interactive growth charts using Recharts
+- 📱 Fully responsive design for desktop and mobile
+- 🎨 Modern UI with Tailwind CSS
+- 📈 WHO 2006 Growth Standards and CDC 2000 Growth Reference
+- 🔄 Gradual transition between WHO and CDC (2-5 years)
+- 💙 Track weight, length/height, and head circumference
+- 📉 Percentile calculations and visualizations
 
 ## Tech Stack
 
