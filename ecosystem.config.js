@@ -5,6 +5,8 @@ module.exports = {
       cwd: './',
       script: 'node_modules/next/dist/bin/next',
       args: 'start -p 4002 -H 0.0.0.0',
+      interpreter: '/home/manan/.local/node/current/bin/node',
+      exec_mode: 'fork',
       env: {
         NODE_ENV: 'production',
         PORT: 4002,
