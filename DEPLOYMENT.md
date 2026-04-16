@@ -1,4 +1,4 @@
-﻿# Railway Deployment Guide
+# Railway Deployment Guide
 
 ## Quick Deploy to Railway
 

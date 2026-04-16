@@ -1,4 +1,4 @@
-﻿# CDC Growth Charts - Project Summary
+# CDC Growth Charts - Project Summary
 
 ## ðŸŽ¯ Project Overview
 

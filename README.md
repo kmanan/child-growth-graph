@@ -1,4 +1,4 @@
-﻿# CDC Growth Charts
+# CDC Growth Charts
 
 A modern, responsive web app for tracking children's growth against the CDC growth reference (0–20 years).
 

@@ -1,4 +1,4 @@
-﻿# GitHub Push Script
+# GitHub Push Script
 # Replace YOUR_GITHUB_URL with your actual repository URL
 
 Write-Host "`nPushing to GitHub..." -ForegroundColor Cyan

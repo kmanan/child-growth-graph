@@ -1,4 +1,4 @@
-﻿# Complete Deployment Guide - GitHub & Railway
+# Complete Deployment Guide - GitHub & Railway
 
 ## Current Status
 âœ… Git repository initialized

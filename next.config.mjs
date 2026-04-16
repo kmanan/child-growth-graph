@@ -1,4 +1,4 @@
-﻿const nextConfig = {
+const nextConfig = {
   reactStrictMode: true,
   basePath: '/childgrowth',
   assetPrefix: '/childgrowth',
