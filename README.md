@@ -1,16 +1,27 @@
 ﻿# CDC Growth Charts
 
-A modern, responsive web application for tracking children's growth using WHO and CDC standards with gradual transition from 2-5 years.
+A modern, responsive web app for tracking children's growth against the CDC growth reference (0–20 years).
 
 ## Features
 
-- 📊 Beautiful, interactive growth charts using Recharts
-- 📱 Fully responsive design for desktop and mobile
-- 🎨 Modern UI with Tailwind CSS
-- 📈 WHO 2006 Growth Standards and CDC 2000 Growth Reference
-- 🔄 Gradual transition between WHO and CDC (2-5 years)
-- 💙 Track weight, length/height, and head circumference
-- 📉 Percentile calculations and visualizations
+- 📊 Interactive growth charts (Recharts)
+- 📱 Responsive design
+- 📈 CDC 2000 Growth Reference, full LMS tables, ages 0–240 months
+- 🔁 US (lb / in) and metric (kg / cm) unit toggle
+- 💙 Tracks weight, length / height, head circumference, and BMI-for-age (2+)
+- 📉 Percentile calculations via the LMS method
+
+## Data source
+
+LMS parameter files come from the CDC and are the same tables used by most
+US pediatric EMRs:
+<https://www.cdc.gov/growthcharts/percentile_data_files.htm>
+
+Raw CSVs live in `data/raw/`. To regenerate `lib/growthData.ts`:
+
+```bash
+node data/build_lms.mjs
+```
 
 ## Tech Stack
 
@@ -49,10 +60,6 @@ npm run dev
 2. Connect your repository to Railway
 3. Railway will automatically detect Next.js and deploy
 4. Set the start command to: `npm start`
-
-## Reference
-
-Based on gradual WHO-CDC transition charts by Daymont et al., Pediatrics, 2025
 
 ## License
 

@@ -1,16 +1,22 @@
-﻿// LMS Method for calculating percentiles and z-scores
-// Based on CDC/WHO growth standards
+// LMS percentile/z-score math against CDC growth references.
+// Tables and getLMSForAge live in growthData.ts (auto-generated).
 
-export interface LMSData {
-  ageMonths: number;
-  L: number;
-  M: number;
-  S: number;
-}
+import {
+  getLMSForAge,
+  getTable,
+  type LMSEntry,
+  type Metric,
+  type Sex,
+} from "./growthData";
+
+export type { LMSEntry, Metric, Sex };
+
+export type UnitSystem = "metric" | "us";
 
 export interface MeasurementData {
   date: Date;
   ageMonths: number;
+  // Canonical units regardless of UI selection: kg, cm.
   weight?: number;
   length?: number;
   headCircumference?: number;
@@ -20,9 +26,13 @@ export interface PercentileResult {
   value: number;
   percentile: number;
   zScore: number;
+  ageMonths: number;
+  inRange: boolean;
+  minAge: number;
+  maxAge: number;
 }
 
-// Calculate z-score using LMS method
+// Z-score from measurement using LMS parameters.
 export function calculateZScore(
   measurement: number,
   L: number,
@@ -31,77 +41,99 @@ export function calculateZScore(
 ): number {
   if (L !== 0) {
     return (Math.pow(measurement / M, L) - 1) / (L * S);
-  } else {
-    return Math.log(measurement / M) / S;
   }
+  return Math.log(measurement / M) / S;
 }
 
-// Calculate percentile from z-score using cumulative distribution function
+// Inverse: measurement value at a given z-score (used to draw percentile curves).
+export function valueFromZScore(z: number, lms: LMSEntry): number {
+  if (lms.L !== 0) {
+    return lms.M * Math.pow(1 + lms.L * lms.S * z, 1 / lms.L);
+  }
+  return lms.M * Math.exp(lms.S * z);
+}
+
+// Standard normal CDF (Abramowitz & Stegun erf approximation).
 export function zScoreToPercentile(zScore: number): number {
-  // Use a more accurate approximation of the standard normal CDF
-  // This is the Abramowitz and Stegun approximation
   const sign = zScore >= 0 ? 1 : -1;
   const z = Math.abs(zScore) / Math.sqrt(2);
-  
-  // Error function approximation
   const t = 1 / (1 + 0.3275911 * z);
-  const erf = 1 - (((((
-    + 1.061405429  * t
-    - 1.453152027) * t
-    + 1.421413741) * t
-    - 0.284496736) * t
-    + 0.254829592) * t) * Math.exp(-z * z);
-  
-  // Convert to CDF
-  const cdf = 0.5 * (1 + sign * erf);
-  
-  return cdf * 100;
+  const erf =
+    1 -
+    ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) *
+      t +
+      0.254829592) *
+      t *
+      Math.exp(-z * z);
+  return 0.5 * (1 + sign * erf) * 100;
 }
 
-// Gradual transition function from WHO to CDC (2-5 years)
-export function gradualTransition(
-  whoZScore: number,
-  cdcZScore: number,
-  ageMonths: number
-): number {
-  if (ageMonths < 24) return whoZScore;
-  if (ageMonths >= 60) return cdcZScore;
-  
-  // Linear transition from 24 to 60 months
-  const transitionProgress = (ageMonths - 24) / 36;
-  return whoZScore * (1 - transitionProgress) + cdcZScore * transitionProgress;
-}
-
-// Calculate measurement percentile
+// Top-level: percentile for a measurement of a given metric/sex/age.
 export function calculatePercentile(
   measurement: number,
-  lmsData: LMSData
+  metric: Metric,
+  sex: Sex,
+  ageMonths: number
 ): PercentileResult {
-  const zScore = calculateZScore(
-    measurement,
-    lmsData.L,
-    lmsData.M,
-    lmsData.S
-  );
+  const { table, inRange, minAge, maxAge } = getTable(metric, sex, ageMonths);
+  const lms = getLMSForAge(table, ageMonths);
+  const zScore = calculateZScore(measurement, lms.L, lms.M, lms.S);
   const percentile = zScoreToPercentile(zScore);
-  
   return {
     value: measurement,
     percentile: Math.round(percentile * 10) / 10,
     zScore: Math.round(zScore * 100) / 100,
+    ageMonths,
+    inRange,
+    minAge,
+    maxAge,
   };
 }
 
-// Get age in months from birth date (returns fractional months for accuracy)
+// Fractional months between two dates (uses average month length).
 export function getAgeInMonths(birthDate: Date, measurementDate: Date): number {
-  // Calculate difference in milliseconds
   const diffMs = measurementDate.getTime() - birthDate.getTime();
-  
-  // Convert to days
   const diffDays = diffMs / (1000 * 60 * 60 * 24);
-  
-  // Convert days to months (using 30.4375 days per month average)
-  const months = diffDays / 30.4375;
-  
-  return Math.max(0, months);
+  return Math.max(0, diffDays / 30.4375);
 }
+
+// BMI in kg/m² from canonical kg + cm.
+export function computeBMI(weightKg: number, lengthCm: number): number {
+  const meters = lengthCm / 100;
+  return weightKg / (meters * meters);
+}
+
+// Unit conversions ----------------------------------------------------------
+
+export const KG_PER_LB = 0.45359237;
+export const CM_PER_IN = 2.54;
+
+export const lbToKg = (lb: number) => lb * KG_PER_LB;
+export const kgToLb = (kg: number) => kg / KG_PER_LB;
+export const inToCm = (i: number) => i * CM_PER_IN;
+export const cmToIn = (cm: number) => cm / CM_PER_IN;
+
+// "8 lb 6 oz" style formatter for infant weights.
+export function formatLbOz(kg: number): string {
+  const totalOz = kgToLb(kg) * 16;
+  const lb = Math.floor(totalOz / 16);
+  const oz = Math.round(totalOz - lb * 16);
+  if (oz === 16) return `${lb + 1} lb 0 oz`;
+  return `${lb} lb ${oz} oz`;
+}
+
+// Display formatters: take canonical kg/cm and produce a string in chosen units.
+export function formatWeight(kg: number, units: UnitSystem): string {
+  if (units === "us") {
+    // Use lb+oz under ~30 lb (infants/toddlers); decimal lb above for readability.
+    return kg < 13.6 ? formatLbOz(kg) : `${kgToLb(kg).toFixed(1)} lb`;
+  }
+  return `${kg.toFixed(2)} kg`;
+}
+
+export function formatLength(cm: number, units: UnitSystem): string {
+  return units === "us" ? `${cmToIn(cm).toFixed(1)} in` : `${cm.toFixed(1)} cm`;
+}
+
+export const weightUnitLabel = (u: UnitSystem) => (u === "us" ? "lb" : "kg");
+export const lengthUnitLabel = (u: UnitSystem) => (u === "us" ? "in" : "cm");

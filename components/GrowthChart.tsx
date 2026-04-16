@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import {
   Line,
@@ -11,195 +11,179 @@ import {
   Scatter,
   ComposedChart,
 } from "recharts";
-import { MeasurementData, calculatePercentile } from "@/lib/growthCalculations";
 import {
-  weightForAgeBoys,
-  weightForAgeGirls,
-  lengthForAgeBoys,
-  lengthForAgeGirls,
-  headCircumferenceBoys,
-  headCircumferenceGirls,
-  getLMSForAge,
-} from "@/lib/growthData";
+  MeasurementData,
+  Metric,
+  UnitSystem,
+  calculatePercentile,
+  computeBMI,
+  valueFromZScore,
+  cmToIn,
+  kgToLb,
+  formatWeight,
+  formatLength,
+  weightUnitLabel,
+  lengthUnitLabel,
+} from "@/lib/growthCalculations";
+import { getLMSForAge, getTable } from "@/lib/growthData";
 
 interface GrowthChartProps {
   measurements: MeasurementData[];
   sex: "male" | "female";
-  type: "weight" | "length" | "headCircumference";
+  type: Metric;
+  units: UnitSystem;
+}
+
+// Pull the right canonical (kg/cm/bmi) value out of a measurement record.
+function valueFor(m: MeasurementData, type: Metric): number | undefined {
+  if (type === "weight") return m.weight;
+  if (type === "length") return m.length;
+  if (type === "headCircumference") return m.headCircumference;
+  if (type === "bmi") {
+    if (m.weight === undefined || m.length === undefined) return undefined;
+    return computeBMI(m.weight, m.length);
+  }
+  return undefined;
+}
+
+// Convert a canonical value (kg or cm) to display units based on metric.
+function toDisplayValue(v: number, type: Metric, units: UnitSystem): number {
+  if (units === "metric") return v;
+  if (type === "weight") return kgToLb(v);
+  if (type === "length" || type === "headCircumference") return cmToIn(v);
+  return v; // BMI is unitless (kg/m²) — same in both systems.
+}
+
+function displayUnit(type: Metric, units: UnitSystem): string {
+  if (type === "weight") return weightUnitLabel(units);
+  if (type === "length" || type === "headCircumference") return lengthUnitLabel(units);
+  return "kg/m²"; // BMI
+}
+
+function chartTitle(type: Metric): string {
+  if (type === "weight") return "Weight-for-Age";
+  if (type === "length") return "Length / Height-for-Age";
+  if (type === "headCircumference") return "Head Circumference-for-Age";
+  return "BMI-for-Age";
+}
+
+function formatPercentile(p: number): string {
+  const r = Math.round(p);
+  const suffix = (n: number) =>
+    n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th";
+  if (p < 1) return "Less than 1st percentile";
+  if (p < 3) return `${r}% (Below 3rd percentile)`;
+  if (p < 10) return `${r}% (Below 10th percentile)`;
+  if (p > 97) return `${r}% (Above 97th percentile)`;
+  if (p > 90) return `${r}% (Above 90th percentile)`;
+  return `${r}${suffix(r)} percentile`;
+}
+
+function percentileExplanation(p: number, type: Metric): string {
+  const r = Math.round(p);
+  const compare = 100 - r;
+  const word =
+    type === "weight"
+      ? "heavier"
+      : type === "length"
+      ? "taller"
+      : type === "headCircumference"
+      ? "larger head circumference"
+      : "higher BMI";
+  if (p < 10) return `About ${compare}% of children the same age have ${word}.`;
+  if (p > 90) return `About ${r}% of children the same age have smaller measurements.`;
+  return `About ${compare}% of children the same age have ${word}, and ${r}% have smaller measurements.`;
 }
 
 export default function GrowthChart({
   measurements,
   sex,
   type,
+  units,
 }: GrowthChartProps) {
-  // Filter measurements that have the relevant data
-  const relevantMeasurements = measurements.filter((m) => {
-    if (type === "weight") return m.weight !== undefined;
-    if (type === "length") return m.length !== undefined;
-    if (type === "headCircumference") return m.headCircumference !== undefined;
-    return false;
-  });
+  const relevant = measurements.filter((m) => valueFor(m, type) !== undefined);
+  if (relevant.length === 0) return null;
 
-  if (relevantMeasurements.length === 0) return null;
+  // Compute the chart's age domain. Use the table that covers the *latest*
+  // measurement age, so the curves match the lookup used for the points.
+  const maxAge = Math.max(...relevant.map((m) => m.ageMonths));
+  const { table, minAge, maxAge: tableMax } = getTable(type, sex, maxAge);
 
-  // Get appropriate data source
-  let dataSource;
-  if (type === "weight") {
-    dataSource = sex === "male" ? weightForAgeBoys : weightForAgeGirls;
-  } else if (type === "length") {
-    dataSource = sex === "male" ? lengthForAgeBoys : lengthForAgeGirls;
-  } else {
-    dataSource =
-      sex === "male" ? headCircumferenceBoys : headCircumferenceGirls;
-  }
+  const chartMin = Math.max(0, minAge);
+  const chartMax = Math.min(tableMax, Math.max(Math.ceil(maxAge) + 6, 36));
+  const step = chartMax - chartMin > 60 ? 1 : 0.5;
 
-  // Prepare chart data with percentile curves
-  const maxAge = Math.max(...relevantMeasurements.map((m) => m.ageMonths));
-  const chartData: Array<{
+  type Row = {
     age: number;
     p10: number;
     p50: number;
     p90: number;
     measurement?: number;
-    percentile?: number;
-  }> = [];
-
-  // Generate percentile curves (10th, 50th, 90th)
-  const maxAgeForChart = Math.max(Math.ceil(maxAge) + 6, 36); // At least 3 years of data
-  for (let age = 0; age <= maxAgeForChart; age += 0.5) {
-    const lms = getLMSForAge(dataSource, age);
-
-    // Calculate values for different percentiles using inverse LMS
-    // Z-scores: -1.28 (10th), 0 (50th), 1.28 (90th)
-    const zScores = {
-      p10: -1.28,
-      p50: 0,
-      p90: 1.28,
-    };
-
-    const calculateValueFromZScore = (z: number) => {
-      if (lms.L !== 0) {
-        return lms.M * Math.pow(1 + lms.L * lms.S * z, 1 / lms.L);
-      } else {
-        return lms.M * Math.exp(lms.S * z);
-      }
-    };
-
+  };
+  const chartData: Row[] = [];
+  for (let age = chartMin; age <= chartMax + 1e-6; age += step) {
+    const lms = getLMSForAge(table, age);
     chartData.push({
       age: Math.round(age * 100) / 100,
-      p10: Math.round(calculateValueFromZScore(zScores.p10) * 10) / 10,
-      p50: Math.round(calculateValueFromZScore(zScores.p50) * 10) / 10,
-      p90: Math.round(calculateValueFromZScore(zScores.p90) * 10) / 10,
+      p10: Math.round(toDisplayValue(valueFromZScore(-1.28, lms), type, units) * 100) / 100,
+      p50: Math.round(toDisplayValue(valueFromZScore(0, lms), type, units) * 100) / 100,
+      p90: Math.round(toDisplayValue(valueFromZScore(1.28, lms), type, units) * 100) / 100,
     });
   }
 
-  // Mark measurement points in the chart data
-  relevantMeasurements.forEach((m) => {
-    const value =
-      type === "weight"
-        ? m.weight!
-        : type === "length"
-        ? m.length!
-        : m.headCircumference!;
-
-    const lms = getLMSForAge(dataSource, m.ageMonths);
-    const result = calculatePercentile(value, lms);
-
-    // Find the closest age point in chartData (within 0.1 months)
-    const closestPoint = chartData.reduce((closest, point) => {
-      const distance = Math.abs(point.age - m.ageMonths);
-      const closestDistance = Math.abs(closest.age - m.ageMonths);
-      return distance < closestDistance ? point : closest;
-    }, chartData[0]);
-    
-    if (closestPoint && Math.abs(closestPoint.age - m.ageMonths) < 0.25) {
-      // Add measurement to existing point
-      (closestPoint as any).measurement = value;
-      (closestPoint as any).percentile = result.percentile;
+  // Stamp measurement points onto the nearest curve row.
+  for (const m of relevant) {
+    const canonical = valueFor(m, type)!;
+    const displayVal = toDisplayValue(canonical, type, units);
+    const closest = chartData.reduce((best, row) =>
+      Math.abs(row.age - m.ageMonths) < Math.abs(best.age - m.ageMonths) ? row : best
+    , chartData[0]);
+    if (closest && Math.abs(closest.age - m.ageMonths) < step) {
+      closest.measurement = Math.round(displayVal * 100) / 100;
     }
-  });
+  }
 
-  // Sort by age
-  chartData.sort((a, b) => a.age - b.age);
-
-  
-  // Extract measurement points for display below chart
-  const measurementPoints = relevantMeasurements.map((m) => {
-    const value =
-      type === "weight"
-        ? m.weight!
-        : type === "length"
-        ? m.length!
-        : m.headCircumference!;
-
-    const lms = getLMSForAge(dataSource, m.ageMonths);
-    const result = calculatePercentile(value, lms);
-
+  // Build a per-measurement details list.
+  const points = relevant.map((m) => {
+    const canonical = valueFor(m, type)!;
+    const result = calculatePercentile(canonical, type, sex, m.ageMonths);
+    let formatted: string;
+    if (type === "weight") formatted = formatWeight(canonical, units);
+    else if (type === "length" || type === "headCircumference")
+      formatted = formatLength(canonical, units);
+    else formatted = `${canonical.toFixed(1)} kg/m²`;
     return {
       age: Math.round(m.ageMonths * 10) / 10,
-      measurement: value,
+      formatted,
       percentile: result.percentile,
+      inRange: result.inRange,
+      minAge: result.minAge,
+      maxAge: result.maxAge,
     };
   });
 
-  const getTitle = () => {
-    if (type === "weight") return "Weight-for-Age";
-    if (type === "length") return "Length-for-Age";
-    return "Head Circumference-for-Age";
-  };
-
-  const getUnit = () => {
-    return type === "weight" ? "kg" : "cm";
-  };
-
-  const formatPercentile = (percentile: number): string => {
-    const rounded = Math.round(percentile);
-    
-    // Handle special cases for 1st, 2nd, 3rd
-    const getSuffix = (n: number) => {
-      if (n === 1) return "st";
-      if (n === 2) return "nd";
-      if (n === 3) return "rd";
-      return "th";
-    };
-    
-    if (percentile < 1) {
-      return "Less than 1%";
-    } else if (percentile < 3) {
-      return `${rounded}% (Below 3rd percentile)`;
-    } else if (percentile < 10) {
-      return `${rounded}% (Below 10th percentile)`;
-    } else if (percentile > 97) {
-      return `${rounded}% (Above 97th percentile)`;
-    } else if (percentile > 90) {
-      return `${rounded}% (Above 90th percentile)`;
-    } else {
-      return `${rounded}${getSuffix(rounded)} percentile`;
-    }
-  };
-
-  const getPercentileExplanation = (percentile: number): string => {
-    const rounded = Math.round(percentile);
-    const comparePercent = 100 - rounded;
-    
-    const measurementType = type === "weight" ? "heavier" : type === "length" ? "taller" : "larger head circumference";
-    
-    if (percentile < 10) {
-      return `About ${comparePercent}% of children the same age have ${measurementType}.`;
-    } else if (percentile > 90) {
-      return `About ${rounded}% of children the same age have smaller measurements.`;
-    } else {
-      return `About ${comparePercent}% of children the same age have ${measurementType}, and ${rounded}% have smaller measurements.`;
-    }
-  };
+  const unit = displayUnit(type, units);
+  const anyOutOfRange = points.some((p) => !p.inRange);
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 border border-gray-100 dark:border-gray-700 transition-colors">
-      <h3 className="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-100">{getTitle()}</h3>
+      <h3 className="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-100">
+        {chartTitle(type)}
+      </h3>
       <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-        Percentiles show how your baby compares to others the same age. 50th percentile means average, 10th means smaller than most, 90th means larger than most.
+        Percentiles compare your child against the CDC growth reference for
+        their age and sex. 50th means average; 10th means smaller than most;
+        90th means larger than most.
       </p>
+
+      {anyOutOfRange && (
+        <div className="mb-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-200">
+          One or more measurements fall outside the supported age range for
+          this chart ({points[0].minAge}-{points[0].maxAge} months). Percentile
+          values for those points are clamped to the chart edge and may not be
+          accurate.
+        </div>
+      )}
 
       <ResponsiveContainer width="100%" height={400}>
         <ComposedChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 10 }}>
@@ -207,14 +191,14 @@ export default function GrowthChart({
           <XAxis
             dataKey="age"
             type="number"
-            domain={[0, 'dataMax']}
+            domain={[chartMin, chartMax]}
             label={{ value: "Age (months)", position: "insideBottom", offset: -5 }}
             stroke="#6b7280"
           />
           <YAxis
             type="number"
-            domain={['auto', 'auto']}
-            label={{ value: getUnit(), angle: -90, position: "insideLeft" }}
+            domain={["auto", "auto"]}
+            label={{ value: unit, angle: -90, position: "insideLeft" }}
             stroke="#6b7280"
           />
           <Tooltip
@@ -226,82 +210,49 @@ export default function GrowthChart({
           />
           <Legend />
 
-          {/* Percentile curves - 10th, 50th, 90th */}
-          <Line
-            type="monotone"
-            dataKey="p10"
-            stroke="#ef4444"
-            strokeWidth={2}
-            dot={false}
-            name="10th percentile"
-            strokeDasharray="5 5"
-            isAnimationActive={false}
-            connectNulls={true}
-          />
-          <Line
-            type="monotone"
-            dataKey="p50"
-            stroke="#3b82f6"
-            strokeWidth={2.5}
-            dot={false}
-            name="50th percentile"
-            isAnimationActive={false}
-            connectNulls={true}
-          />
-          <Line
-            type="monotone"
-            dataKey="p90"
-            stroke="#10b981"
-            strokeWidth={2}
-            dot={false}
-            name="90th percentile"
-            strokeDasharray="5 5"
-            isAnimationActive={false}
-            connectNulls={true}
-          />
+          <Line type="monotone" dataKey="p10" stroke="#ef4444" strokeWidth={2}
+            dot={false} name="10th percentile" strokeDasharray="5 5"
+            isAnimationActive={false} connectNulls />
+          <Line type="monotone" dataKey="p50" stroke="#3b82f6" strokeWidth={2.5}
+            dot={false} name="50th percentile"
+            isAnimationActive={false} connectNulls />
+          <Line type="monotone" dataKey="p90" stroke="#10b981" strokeWidth={2}
+            dot={false} name="90th percentile" strokeDasharray="5 5"
+            isAnimationActive={false} connectNulls />
 
-          {/* Actual measurements as visible scatter points */}
-          <Scatter
-            dataKey="measurement"
-            fill="#8b5cf6"
-            name="Baby's measurements"
-            shape="circle"
-            isAnimationActive={false}
-            r={8}
-            stroke="#6d28d9"
-            strokeWidth={2}
-          />
+          <Scatter dataKey="measurement" fill="#8b5cf6" name="Your child"
+            shape="circle" isAnimationActive={false} r={8}
+            stroke="#6d28d9" strokeWidth={2} />
         </ComposedChart>
       </ResponsiveContainer>
 
-      {/* Measurement details */}
       <div className="mt-4 space-y-3">
-        {measurementPoints.map((point, idx) => (
-          <div
-            key={idx}
-            className="bg-purple-50 dark:bg-purple-900/30 px-4 py-3 rounded-lg"
-          >
+        {points.map((point, idx) => (
+          <div key={idx} className="bg-purple-50 dark:bg-purple-900/30 px-4 py-3 rounded-lg">
             <div className="flex justify-between items-center text-sm mb-2">
               <span className="text-gray-600 dark:text-gray-300">
                 {Math.floor(point.age)} months
               </span>
               <span className="font-semibold text-gray-800 dark:text-gray-100">
-                {point.measurement} {getUnit()}
+                {point.formatted}
               </span>
               <span className="text-purple-600 dark:text-purple-400 font-medium">
-                {formatPercentile(point.percentile)}
+                {point.inRange ? formatPercentile(point.percentile) : "Outside chart range"}
               </span>
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 italic">
-              {getPercentileExplanation(point.percentile)}
-            </p>
+            {point.inRange && (
+              <p className="text-xs text-gray-500 dark:text-gray-400 italic">
+                {percentileExplanation(point.percentile, type)}
+              </p>
+            )}
           </div>
         ))}
-        
-        {/* Disclaimer */}
+
         <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
           <p className="text-xs text-gray-600 dark:text-gray-300">
-            <strong>Note:</strong> These numbers are generic and directional. Please consult a pediatrician for accuracy and next steps.
+            <strong>Note:</strong> These numbers are directional and based on
+            the CDC reference. Always consult your pediatrician for clinical
+            assessment.
           </p>
         </div>
       </div>

@@ -5,7 +5,12 @@ import dynamic from "next/dynamic";
 import { Baby, Calendar, Weight, Ruler, Brain, Apple, Sparkles, Heart, ExternalLink } from "lucide-react";
 import MeasurementForm from "@/components/MeasurementForm";
 import GrowthChart from "@/components/GrowthChart";
-import { MeasurementData } from "@/lib/growthCalculations";
+import {
+  MeasurementData,
+  UnitSystem,
+  formatLength,
+  formatWeight,
+} from "@/lib/growthCalculations";
 
 const ThemeToggle = dynamic(() => import("@/components/ThemeToggle"), {
   ssr: false,
@@ -13,6 +18,7 @@ const ThemeToggle = dynamic(() => import("@/components/ThemeToggle"), {
 
 export default function Home() {
   const [measurements, setMeasurements] = useState<MeasurementData[]>([]);
+  const [units, setUnits] = useState<UnitSystem>("us");
   const [childInfo, setChildInfo] = useState<{
     name: string;
     sex: "male" | "female";
@@ -26,6 +32,16 @@ export default function Home() {
   const addMeasurement = (measurement: MeasurementData) => {
     setMeasurements([...measurements, measurement]);
   };
+
+  const latest = measurements[measurements.length - 1];
+  const latestAge = latest?.ageMonths ?? 0;
+  const showBMI =
+    measurements.some(
+      (m) =>
+        m.ageMonths >= 24 &&
+        m.weight !== undefined &&
+        m.length !== undefined
+    );
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900 transition-colors">
@@ -58,6 +74,8 @@ export default function Home() {
               <MeasurementForm
                 childInfo={childInfo}
                 setChildInfo={setChildInfo}
+                units={units}
+                setUnits={setUnits}
                 onAddMeasurement={addMeasurement}
               />
             </div>
@@ -67,31 +85,33 @@ export default function Home() {
               <div className="bg-gradient-to-br from-primary-500 to-purple-600 dark:from-primary-600 dark:to-purple-700 rounded-2xl shadow-xl p-6 text-white">
                 <h3 className="text-xl font-semibold mb-4">Latest Measurements</h3>
                 <div className="grid grid-cols-3 gap-4">
-                  {measurements[measurements.length - 1].weight && (
+                  {latest?.weight !== undefined && (
                     <div className="text-center">
                       <Weight className="w-6 h-6 mx-auto mb-2 opacity-90" />
                       <div className="text-2xl font-bold">
-                        {measurements[measurements.length - 1].weight}
+                        {formatWeight(latest.weight, units)}
                       </div>
-                      <div className="text-sm opacity-90">kg</div>
+                      <div className="text-sm opacity-90">weight</div>
                     </div>
                   )}
-                  {measurements[measurements.length - 1].length && (
+                  {latest?.length !== undefined && (
                     <div className="text-center">
                       <Ruler className="w-6 h-6 mx-auto mb-2 opacity-90" />
                       <div className="text-2xl font-bold">
-                        {measurements[measurements.length - 1].length}
+                        {formatLength(latest.length, units)}
                       </div>
-                      <div className="text-sm opacity-90">cm</div>
+                      <div className="text-sm opacity-90">
+                        {latestAge >= 24 ? "height" : "length"}
+                      </div>
                     </div>
                   )}
-                  {measurements[measurements.length - 1].headCircumference && (
+                  {latest?.headCircumference !== undefined && (
                     <div className="text-center">
                       <Brain className="w-6 h-6 mx-auto mb-2 opacity-90" />
                       <div className="text-2xl font-bold">
-                        {measurements[measurements.length - 1].headCircumference}
+                        {formatLength(latest.headCircumference, units)}
                       </div>
-                      <div className="text-sm opacity-90">cm</div>
+                      <div className="text-sm opacity-90">head</div>
                     </div>
                   )}
                 </div>
@@ -107,17 +127,28 @@ export default function Home() {
                   measurements={measurements}
                   sex={childInfo.sex}
                   type="weight"
+                  units={units}
                 />
                 <GrowthChart
                   measurements={measurements}
                   sex={childInfo.sex}
                   type="length"
+                  units={units}
                 />
                 <GrowthChart
                   measurements={measurements}
                   sex={childInfo.sex}
                   type="headCircumference"
+                  units={units}
                 />
+                {showBMI && (
+                  <GrowthChart
+                    measurements={measurements}
+                    sex={childInfo.sex}
+                    type="bmi"
+                    units={units}
+                  />
+                )}
               </>
             ) : (
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-12 text-center border border-gray-100 dark:border-gray-700 transition-colors">
@@ -243,10 +274,20 @@ export default function Home() {
         {/* Footer */}
         <div className="mt-12 text-center text-sm text-gray-500 dark:text-gray-400">
           <p>
-            Based on WHO 2006 Growth Standards and CDC 2000 Growth Reference with gradual transition (2-5 years)
+            Based on the CDC 2000 Growth Reference (0-240 months) — the same
+            tables most US pediatric EMRs use. Source data:{" "}
+            <a
+              href="https://www.cdc.gov/growthcharts/percentile_data_files.htm"
+              className="underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              cdc.gov/growthcharts
+            </a>
+            .
           </p>
           <p className="mt-2">
-            Reference: Daymont et al., Pediatrics, 2025
+            BMI-for-age is shown for children 2 years and older.
           </p>
         </div>
       </div>
