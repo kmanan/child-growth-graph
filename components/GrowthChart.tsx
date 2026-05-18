@@ -125,9 +125,11 @@ export default function GrowthChart({
     const lms = getLMSForAge(table, age);
     chartData.push({
       age: Math.round(age * 100) / 100,
-      p10: Math.round(toDisplayValue(valueFromZScore(-1.28, lms), type, units) * 100) / 100,
+      // Exact inverse-normal z-scores for the 10th and 90th percentiles.
+      // Using ±1.28 (rounded) would plot at the 10.027 / 89.973 percentile.
+      p10: Math.round(toDisplayValue(valueFromZScore(-1.28155, lms), type, units) * 100) / 100,
       p50: Math.round(toDisplayValue(valueFromZScore(0, lms), type, units) * 100) / 100,
-      p90: Math.round(toDisplayValue(valueFromZScore(1.28, lms), type, units) * 100) / 100,
+      p90: Math.round(toDisplayValue(valueFromZScore(1.28155, lms), type, units) * 100) / 100,
     });
   }
 

@@ -59,8 +59,11 @@ export default function DatePicker({
     { value: "12", label: "December" },
   ];
 
+  // Birth-date range: today back ~20 years. The CDC growth reference covers
+  // 0-240 months (0-20 years), so anything older than ~20 years ago is
+  // outside the chart's domain anyway.
   const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 100 }, (_, i) => currentYear - i);
+  const years = Array.from({ length: 21 }, (_, i) => currentYear - i);
 
   const daysInMonth = month && year ? getDaysInMonth(new Date(parseInt(year), parseInt(month) - 1)) : 31;
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);

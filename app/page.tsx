@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { Baby, Calendar, Weight, Ruler, Brain, Apple, Sparkles, Heart, ExternalLink, Download, Trash2 } from "lucide-react";
 import MeasurementForm from "@/components/MeasurementForm";
 import GrowthChart from "@/components/GrowthChart";
@@ -363,6 +364,11 @@ export default function Home() {
           </p>
           <p className="mt-2">
             BMI-for-age is shown for children 2 years and older.
+          </p>
+          <p className="mt-3">
+            <Link href="/disclaimer" className="underline">
+              Full disclaimer
+            </Link>
           </p>
         </div>
       </div>

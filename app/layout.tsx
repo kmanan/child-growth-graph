@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "./providers";
+import DisclaimerBanner from "@/components/DisclaimerBanner";
 
 export const metadata: Metadata = {
   title: "Growth Charts - Track Your Child's Growth",
@@ -15,7 +16,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <DisclaimerBanner />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );
