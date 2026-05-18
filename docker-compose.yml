@@ -8,8 +8,12 @@ services:
     image: cdc-growth-charts:local
     container_name: growth-charts
     restart: unless-stopped
+    # Default host port is 4769 (G-R-O-W on a phone keypad) — picked to
+    # avoid the 3000 traffic jam every homelabber lives with (Grafana,
+    # Gitea, every other Next.js app, etc.). Override with HOST_PORT=...
+    # in your .env or your orchestrator's env vars.
     ports:
-      - "${HOST_PORT:-3000}:3000"
+      - "${HOST_PORT:-4769}:3000"
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1"]
       interval: 30s

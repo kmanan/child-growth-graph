@@ -15,9 +15,9 @@ cd child-growth-graph
 docker compose up -d
 ```
 
-Then open <http://localhost:3000>. That's it.
+Then open <http://localhost:4769>. That's it.
 
-To bind to a different port: `HOST_PORT=8080 docker compose up -d`.
+> **Why 4769?** It's GROW on a phone keypad, and it sidesteps the port-3000 traffic jam (Grafana, Gitea, every other Next.js app). Override with `HOST_PORT=8080 docker compose up -d`, or copy `.env.example` to `.env` and edit. The container always listens on 3000 internally; the host port is yours to choose.
 
 ## What it does
 
