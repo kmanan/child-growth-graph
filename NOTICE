@@ -1,0 +1,10 @@
+cdc-growth-charts
+Copyright 2026 Manan Kakkar
+
+This product includes growth reference data from the U.S. Centers for
+Disease Control and Prevention (CDC), retrieved from:
+https://www.cdc.gov/growthcharts/percentile_data_files.htm
+
+CDC growth chart data is a work of the U.S. government and is in the
+public domain. See data/raw/README.md for the specific files used,
+retrieval dates, and SHA256 checksums.

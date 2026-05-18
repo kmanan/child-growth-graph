@@ -31,3 +31,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# session/IDE
+.claude/
+.specstory/
+.vscode/
+.idea/
+
+# docker
+.docker-cache/

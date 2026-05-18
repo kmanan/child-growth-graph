@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { Baby, Calendar, Weight, Ruler, Brain, Apple, Sparkles, Heart, ExternalLink } from "lucide-react";
+import { Baby, Calendar, Weight, Ruler, Brain, Apple, Sparkles, Heart, ExternalLink, Download, Trash2 } from "lucide-react";
 import MeasurementForm from "@/components/MeasurementForm";
 import GrowthChart from "@/components/GrowthChart";
 import {
@@ -11,6 +11,13 @@ import {
   formatLength,
   formatWeight,
 } from "@/lib/growthCalculations";
+import {
+  TRACKING_ENABLED,
+  loadSnapshot,
+  saveSnapshot,
+  clearSnapshot,
+  exportBabyBuddyCSVs,
+} from "@/lib/tracking";
 
 const ThemeToggle = dynamic(() => import("@/components/ThemeToggle"), {
   ssr: false,
@@ -28,9 +35,42 @@ export default function Home() {
     sex: "male",
     birthDate: null,
   });
+  const [hydrated, setHydrated] = useState(false);
+
+  // Self-host mode: hydrate from localStorage on mount.
+  useEffect(() => {
+    if (!TRACKING_ENABLED) {
+      setHydrated(true);
+      return;
+    }
+    const snapshot = loadSnapshot();
+    if (snapshot) {
+      setChildInfo(snapshot.childInfo);
+      setMeasurements(snapshot.measurements);
+    }
+    setHydrated(true);
+  }, []);
+
+  // Self-host mode: persist on any change after hydration.
+  useEffect(() => {
+    if (!TRACKING_ENABLED || !hydrated) return;
+    saveSnapshot(childInfo, measurements);
+  }, [childInfo, measurements, hydrated]);
 
   const addMeasurement = (measurement: MeasurementData) => {
     setMeasurements([...measurements, measurement]);
+  };
+
+  const handleExport = () => {
+    if (measurements.length === 0) return;
+    exportBabyBuddyCSVs(measurements, units);
+  };
+
+  const handleClear = () => {
+    if (!confirm("Clear all saved measurements? This can't be undone.")) return;
+    clearSnapshot();
+    setMeasurements([]);
+    setChildInfo({ name: "", sex: "male", birthDate: null });
   };
 
   const latest = measurements[measurements.length - 1];
@@ -58,7 +98,7 @@ export default function Home() {
             </h1>
           </div>
           <p className="text-gray-600 dark:text-gray-300 text-lg max-w-3xl mx-auto whitespace-nowrap">
-            Track your child's growth with beautiful, interactive charts based on WHO and CDC standards
+            Track your child's growth with beautiful, interactive charts based on the CDC growth reference
           </p>
         </div>
 
@@ -115,6 +155,41 @@ export default function Home() {
                     </div>
                   )}
                 </div>
+
+                {TRACKING_ENABLED && (
+                  <div className="mt-6 pt-4 border-t border-white/20 space-y-3">
+                    <p className="text-xs opacity-90">
+                      Saved locally on this device. Export to{" "}
+                      <a
+                        href="https://github.com/babybuddy/babybuddy"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline"
+                      >
+                        Baby Buddy
+                      </a>{" "}
+                      when you outgrow this tool.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={handleExport}
+                        className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white text-sm font-medium px-3 py-2 rounded-lg transition"
+                      >
+                        <Download className="w-4 h-4" />
+                        Export Baby Buddy CSVs ({units === "us" ? "lb / in" : "kg / cm"})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleClear}
+                        className="inline-flex items-center gap-2 bg-white/10 hover:bg-red-500/40 text-white text-sm font-medium px-3 py-2 rounded-lg transition"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Clear saved data
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
