@@ -26,6 +26,10 @@ ENV BASE_PATH=$BASE_PATH
 ARG NEXT_PUBLIC_ENABLE_TRACKING="true"
 ENV NEXT_PUBLIC_ENABLE_TRACKING=$NEXT_PUBLIC_ENABLE_TRACKING
 
+# Enable Next's standalone output for tiny final image. Gated by env so it
+# only fires for Docker builds — `next start`-based deploys (e.g. PM2) would
+# break with output:'standalone' set.
+ENV BUILD_STANDALONE=true
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 

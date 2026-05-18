@@ -10,6 +10,10 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 4002,
+        // next.config.mjs reads BASE_PATH at BOTH build and runtime; both
+        // must agree. The prod nginx proxy mounts this app at /childgrowth.
+        BASE_PATH: '/childgrowth',
+        NEXT_PUBLIC_ENABLE_TRACKING: 'false',
       },
       instances: 1,
       autorestart: true,
