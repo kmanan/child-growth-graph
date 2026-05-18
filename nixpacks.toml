@@ -5,7 +5,10 @@ nixPkgs = ["nodejs_20", "npm-9_x"]
 cmds = ["npm install"]
 
 [phases.build]
-cmds = ["npm run build"]
+# Preserve the krytonlabs.com/childgrowth subpath that the prod nginx proxy
+# expects. The repo default basePath is empty (root) for OSS self-hosters;
+# this Railway-specific build bakes the prod subpath back in.
+cmds = ["BASE_PATH=/childgrowth npm run build"]
 
 [start]
 cmd = "npm start"
