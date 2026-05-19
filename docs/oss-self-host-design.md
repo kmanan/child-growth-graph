@@ -99,7 +99,7 @@ Age is computed in fractional months using a 30.4375-day month (`lib/growthCalcu
 **Persistence is mode-dependent:**
 
 - **Hosted mode** (`NEXT_PUBLIC_ENABLE_TRACKING` unset/`false`): pure `useState`. Refresh = data lost. This is the "quick check and leave" experience.
-- **Self-host mode** (`NEXT_PUBLIC_ENABLE_TRACKING=true`): on mount, hydrate from `localStorage["growth-charts.measurements"]`; on every change, debounce-save back. Versioned schema (`{ version: 1, ... }`) with `JSON.parse` wrapped in try/catch so corrupt entries silently fall back to empty rather than crashing.
+- **Self-host mode** (`NEXT_PUBLIC_ENABLE_TRACKING=true`): on mount, hydrate from `localStorage["growth-charts.v1"]`; on every change after hydration, save back. Versioned schema (`{ version: 1, ... }`) with `JSON.parse` wrapped in try/catch so corrupt entries silently fall back to empty rather than crashing.
 
 **Baby Buddy CSV export** (self-host mode only): a single button produces four downloads matching [Baby Buddy's import fixtures](https://github.com/babybuddy/babybuddy/tree/master/core/tests/import) exactly:
 
@@ -130,14 +130,9 @@ Files under `data/raw/`:
 
 **Out-of-range handling:** `getLMSForAge` clamps to the table's first/last row rather than extrapolating (extrapolating LMS curves is dangerous and produces nonsense values). The UI surfaces this explicitly with an amber "outside chart range" banner (`components/GrowthChart.tsx:179-186`) and labels the per-point percentile as "Outside chart range" instead of returning a misleading number. **Do not "fix" this into extrapolation.**
 
-**Open issue (P0 before launch):** The app copy in `app/layout.tsx:7` and `app/page.tsx:61` claims "WHO and CDC standards", but the bundled data is purely CDC (verified: all six imports in `data/build_lms.mjs:11-19` are CDC LMS files; no WHO data is referenced anywhere in `lib/` or `data/`). Options:
+**Resolved:** The app copy says CDC throughout. WHO 0-24mo support remains a roadmap option rather than a current behavior.
 
-- **(A) Fix the copy.** Say "CDC growth reference" everywhere. Simplest, ships today.
-- **(B) Add WHO 0–24mo tables** and switch over for the infant range (current US clinical practice since 2010). Higher work, more correct.
-
-Recommend (A) for v1 and (B) for v1.1.
-
-`data/raw/README.md` (to be added) will record source URL, retrieval date, and SHA256 of each CSV so downstream auditors can verify provenance.
+`data/raw/README.md` records source URL, retrieval date, and SHA256 of each CSV so downstream auditors can verify provenance.
 
 ## 8. Deployment
 
@@ -170,7 +165,7 @@ The build output confirms every page already prerenders as `○ (Static)` — no
 
 ### 8.4 Reverse proxy / sub-path
 
-`next.config.mjs` currently hard-codes `basePath: '/childgrowth'`. Before OSS launch this becomes a **build-time argument**, defaulting to root.
+`next.config.mjs` reads `BASE_PATH` as a build-time argument and defaults to root.
 
 > **Why build-time, not runtime?** `basePath` is inlined into the client JS bundle at `next build` — this is a Next.js limitation, not a project choice (see [the official basePath reference](https://nextjs.org/docs/app/api-reference/config/next-config-js/basePath) and the long-standing [discussion #16059](https://github.com/vercel/next.js/discussions/16059)). Setting `BASE_PATH` at `docker run` time has no effect on the served bundle. This matches what [Umami](https://docs.umami.is/docs/environment-variables) and every other self-hostable Next app does.
 
@@ -179,7 +174,7 @@ The build output confirms every page already prerenders as `○ (Static)` — no
 const basePath = process.env.BASE_PATH || '';
 export default {
   reactStrictMode: true,
-  output: 'standalone',
+  output: process.env.BUILD_STANDALONE === 'true' ? 'standalone' : undefined,
   basePath,
   assetPrefix: basePath || undefined,
 };
@@ -212,23 +207,9 @@ No secrets. No external API keys. `.env.example` documents the above and nothing
 
 Ordered by what blocks open-sourcing. Items marked **[V]** are direct outputs of the validation pass; their fixes are grounded in [external best-practice research](#13-versioning--releases) (see footnote citations in this section).
 
-### P0 — blocks the public push to main
+### P0 — completed for public v1
 
-1. **LICENSE — Apache 2.0** (revised from MIT). Apache 2.0 includes an explicit patent grant, which is the cautious choice for healthcare-adjacent code even when the underlying data is public-domain. Permissions are otherwise identical to MIT for end users; cost is one extra file (`NOTICE`). AGPL was considered and rejected — enterprise self-hosters (clinics, NGOs) commonly blacklist it.
-2. **WHO/CDC copy fix** — pick option (A) or (B) from §7 and align `app/layout.tsx`, `app/page.tsx`, and the footer.
-3. **Medical disclaimer — banner + page** (revised from "just a banner"). Match the MDCalc pattern: (a) persistent, non-dismissible above-the-fold sentence ("Educational use only. Not medical advice. Consult your pediatrician. In an emergency, call local emergency services."), and (b) a footer link to a dedicated `/disclaimer` page with the full four-clause legal text (educational purposes, not professional advice, consult provider, emergency contact). Do not gate use behind a dismissible modal — friction without safety benefit.
-4. **Birth-date year range** — `components/DatePicker.tsx:63` currently allows 100 years back. Cap at `today` and floor at ~20 years.
-5. **`BASE_PATH` as build-time `ARG`, defaulting to root** [V] — see §8.4. `basePath` is a build-time inlined value in Next.js; this is the universal self-host pattern (Umami, etc.). The published image must build with `BASE_PATH=""` so the unconfigured `docker run` works at `/`.
-6. **`output: 'standalone'` in `next.config.mjs`** [V] — required for the multi-stage Dockerfile to produce a ~150 MB image instead of ~1 GB. Matches the official Next.js with-docker example. Without this, "Dockerfile hardening" (P1) doesn't deliver its size benefit.
-7. **Strip `/home/manan/...` from `ecosystem.config.js:7`** [V] — narrowed from "strip personal IDs from 5 files". Validation confirmed the other deploy configs (`railway.json`, `nixpacks.toml`, `DEPLOY_NOW.md`, `push-to-github.ps1`) contain no secrets and no personal identifiers; only the hardcoded absolute interpreter path leaks. Either remove the `interpreter:` line (let PM2 use `$PATH`) or document that this file is a personal example and users should write their own.
-8. **Fix mangled UTF-8 in `DEPLOY_NOW.md`** [V] — characters render as `âœ…` instead of ✅. Cosmetic but glaring in GitHub web view. Re-save as UTF-8 without BOM.
-9. **Fix `npm run lint` (broken under Next 16)** [V] — `next lint` was removed in Next 16. Run the official codemod, which creates `eslint.config.mjs`, updates the `lint` script to `eslint .`, and removes the dead `eslint` block from `next.config`:
-   ```bash
-   npx @next/codemod@latest next-lint-to-eslint-cli .
-   ```
-   This unblocks P1 #14 (CI lint) and is a one-command, zero-config fix.
-10. **`data/raw/README.md`** — source URL, retrieval date, SHA256 of each CSV. Establishes provenance for the chart numbers and is the lowest-effort credibility win in the repo.
-11. **README rewrite** — what it is, screenshots, one-line Docker run, link to this design doc.
+The original public-release blockers are implemented: Apache 2.0 license and NOTICE, CDC-only copy, persistent disclaimer banner plus /disclaimer page, bounded date inputs, root-default Docker BASE_PATH, standalone Docker output, portable PM2 config, ESLint flat config, CDC data provenance, and README quickstart.
 
 ### P1 — should ship in v1 but not blocking
 
@@ -236,10 +217,9 @@ Ordered by what blocks open-sourcing. Items marked **[V]** are direct outputs of
 13. **`SECURITY.md`** — point to GitHub private advisories.
 14. **`CONTRIBUTING.md`** — even minimal (PR checklist, how to regenerate LMS tables, how to verify chart math).
 15. **`.env.example`** — documents `BASE_PATH`, `PORT`, `HOSTNAME` from §9.
-16. **GitHub Actions CI** — `npm run lint` + `npm run build` on PRs (depends on P0 #9 landing first).
-17. **Chart precision nit** [V] — `components/GrowthChart.tsx:128,130` use `z = ±1.28` to draw the labeled 10th/90th percentile curves, which actually plots at the 10.027/89.973 percentile (off by ~1 g of weight at 24mo). Two-character fix: change to `±1.28155`. Sub-percentile error today, but a "labeled inaccuracy" we should clean before a public launch.
-18. **Real date picker** — replace the 3-dropdown with `<input type="date">` (with fallback for older browsers).
-19. **A11y pass** — `htmlFor` on labels, focus rings audit, keyboard tab order, viewport contrast.
+16. **GitHub Actions CI** — `npm run lint`, `npm run validate:data`, and `npm run build` on PRs.
+17. **Date picker a11y polish** — current bounded dropdowns are functional; future work is label `htmlFor` wiring and native-date fallback evaluation.
+18. **A11y pass** — `htmlFor` on labels, focus rings audit, keyboard tab order, viewport contrast.
 
 ### P2 — roadmap, not v1
 
@@ -288,4 +268,4 @@ Out of scope: protecting against a malicious *operator* who modifies the build t
 
 ---
 
-**Next step:** triage the eleven P0 items into a single pre-launch PR. Validated against the actual code (`lib/growthCalculations.ts` math agrees with CDC tables to within 2.5×10⁻⁵%), against the working `next build` (3 pages prerender as static), and against external best practices ([Next.js self-hosting docs](https://nextjs.org/docs/app/guides/self-hosting), [Umami's `BASE_PATH` pattern](https://docs.umami.is/docs/environment-variables), [Excalidraw's local-persistence model](https://www.mintlify.com/excalidraw/excalidraw/guides/storage), [MDCalc's disclaimer pattern](https://www.mdcalc.com/disclaimer)). After P0 lands, cut `v1.0.0` and push the repo public.
+**Next step:** add CI and release automation before tagging v1.0.0. Validated against the actual code (`lib/growthCalculations.ts` math agrees with CDC tables to within 2.5×10⁻⁵%), against the working `next build` (3 pages prerender as static), and against external best practices ([Next.js self-hosting docs](https://nextjs.org/docs/app/guides/self-hosting), [Umami's `BASE_PATH` pattern](https://docs.umami.is/docs/environment-variables), [Excalidraw's local-persistence model](https://www.mintlify.com/excalidraw/excalidraw/guides/storage), [MDCalc's disclaimer pattern](https://www.mdcalc.com/disclaimer)). Cut `v1.0.0` after CI is in place.

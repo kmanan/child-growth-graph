@@ -1,5 +1,7 @@
 # cdc-growth-charts
 
+![CI](https://github.com/kmanan/child-growth-graph/actions/workflows/ci.yml/badge.svg)
+
 A privacy-first pediatric growth chart viewer built on the CDC growth reference (0–20 years). Plot a child's weight, length / height, head circumference, and BMI against the same percentile curves a US pediatric EMR uses.
 
 Two modes from one codebase:
@@ -16,6 +18,8 @@ docker compose up -d
 ```
 
 Then open <http://localhost:4769>. That's it.
+
+![CDC Growth Charts interface preview](docs/assets/self-host-preview.svg)
 
 > **Why 4769?** It's GROW on a phone keypad, and it sidesteps the port-3000 traffic jam (Grafana, Gitea, every other Next.js app). Override with `HOST_PORT=8080 docker compose up -d`, or copy `.env.example` to `.env` and edit. The container always listens on 3000 internally; the host port is yours to choose.
 
@@ -42,13 +46,23 @@ When `NEXT_PUBLIC_ENABLE_TRACKING=true` is baked into the build (the default for
 
    `child_id` defaults to `1` (Baby Buddy's first-child default). Edit the CSV before importing if your Baby Buddy install uses a different ID. Values export in whatever unit system you're currently viewing — the button labels the units explicitly.
 
+## Docker Image
+
+Tagged releases publish multi-arch images to GitHub Container Registry:
+
+```bash
+docker run -d --name growth-charts -p 4769:3000 ghcr.io/kmanan/child-growth-graph:latest
+```
+
+For sub-path mounting, build your own image with `--build-arg BASE_PATH=/childgrowth` because Next.js inlines `basePath` at build time.
+
 ## Configuration
 
 | Variable | Default | Scope | Purpose |
 |---|---|---|---|
 | `BASE_PATH` | `""` | **Build-time** (Docker `ARG`) | URL prefix for sub-path mounting. Inlined into client bundle; requires rebuild. |
 | `NEXT_PUBLIC_ENABLE_TRACKING` | `"true"` (Docker), `"false"` (npm) | **Build-time** | Enables localStorage + CSV export. |
-| `HOST_PORT` | `3000` | Runtime (compose) | Port to expose on the host. |
+| `HOST_PORT` | `4769` | Runtime (compose) | Port to expose on the host. |
 | `PORT` | `3000` | Runtime (container) | Internal Next.js listen port. |
 
 ### Sub-path mounting (e.g. behind a reverse proxy at `/childgrowth`)
@@ -65,11 +79,13 @@ Then proxy `proxy_pass http://127.0.0.1:3000/childgrowth;` — do **not** strip 
 ## Development
 
 ```bash
-npm install
+npm install          # use Node 20; .nvmrc and .node-version are provided
 npm run dev          # http://localhost:3000
 npm run build        # production build
 npm run lint         # ESLint (flat config)
 node data/build_lms.mjs  # regenerate lib/growthData.ts from data/raw/*.csv
+npm run validate:data  # verify CDC LMS math against published percentiles
+npm audit --omit=dev # production dependency audit
 ```
 
 Node ≥ 20.9 required.

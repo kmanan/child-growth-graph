@@ -107,8 +107,6 @@ export function clearSnapshot(): void {
 
 import { computeBMI } from "./growthCalculations";
 import { kgToLb, cmToIn } from "./growthCalculations";
-import type { UnitSystem } from "./growthCalculations";
-
 type BabyBuddyMetric = "weight" | "height" | "head_circumference" | "bmi";
 
 function isoDate(d: Date): string {
