@@ -40,16 +40,16 @@ export default function Home() {
 
   // Self-host mode: hydrate from localStorage on mount.
   useEffect(() => {
-    if (!TRACKING_ENABLED) {
+    queueMicrotask(() => {
+      if (TRACKING_ENABLED) {
+        const snapshot = loadSnapshot();
+        if (snapshot) {
+          setChildInfo(snapshot.childInfo);
+          setMeasurements(snapshot.measurements);
+        }
+      }
       setHydrated(true);
-      return;
-    }
-    const snapshot = loadSnapshot();
-    if (snapshot) {
-      setChildInfo(snapshot.childInfo);
-      setMeasurements(snapshot.measurements);
-    }
-    setHydrated(true);
+    });
   }, []);
 
   // Self-host mode: persist on any change after hydration.
@@ -59,7 +59,9 @@ export default function Home() {
   }, [childInfo, measurements, hydrated]);
 
   const addMeasurement = (measurement: MeasurementData) => {
-    setMeasurements([...measurements, measurement]);
+    setMeasurements((current) =>
+      [...current, measurement].sort((a, b) => a.date.getTime() - b.date.getTime())
+    );
   };
 
   const handleExport = () => {
@@ -68,7 +70,7 @@ export default function Home() {
   };
 
   const handleClear = () => {
-    if (!confirm("Clear all saved measurements? This can't be undone.")) return;
+    if (!confirm("Clear all saved measurements? This can\u0027t be undone.")) return;
     clearSnapshot();
     setMeasurements([]);
     setChildInfo({ name: "", sex: "male", birthDate: null });
@@ -99,7 +101,7 @@ export default function Home() {
             </h1>
           </div>
           <p className="text-gray-600 dark:text-gray-300 text-lg max-w-3xl mx-auto whitespace-nowrap">
-            Track your child's growth with beautiful, interactive charts based on the CDC growth reference
+            Track your child&apos;s growth with beautiful, interactive charts based on the CDC growth reference
           </p>
         </div>
 
@@ -233,7 +235,7 @@ export default function Home() {
                   No measurements yet
                 </h3>
                 <p className="text-gray-500 dark:text-gray-400">
-                  Add your child's information and measurements to see beautiful growth charts
+                  Add your child&apos;s information and measurements to see beautiful growth charts
                 </p>
               </div>
             )}

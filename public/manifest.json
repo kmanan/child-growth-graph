@@ -1,14 +1,14 @@
 {
   "name": "CDC Growth Charts",
   "short_name": "Growth Charts",
-  "description": "Track your child's growth with beautiful, interactive charts",
+  "description": "Track pediatric growth with CDC reference charts",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0ea5e9",
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>ðŸ‘¶</text></svg>",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%230ea5e9'/%3E%3Ctext x='50' y='64' text-anchor='middle' font-size='46' font-family='Arial,sans-serif' fill='white'%3EG%3C/text%3E%3C/svg%3E",
       "sizes": "192x192",
       "type": "image/svg+xml"
     }

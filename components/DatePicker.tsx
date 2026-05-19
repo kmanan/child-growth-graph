@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { getDaysInMonth, isValid, parse } from "date-fns";
 
 interface DatePickerProps {
@@ -8,7 +8,28 @@ interface DatePickerProps {
   onChange: (date: Date | null) => void;
   label: string;
   required?: boolean;
+  minDate?: Date;
   maxDate?: Date;
+}
+
+function partsFromDate(value: Date | null) {
+  if (!value || !isValid(value)) return { month: "", day: "", year: "" };
+  return {
+    month: String(value.getMonth() + 1),
+    day: String(value.getDate()),
+    year: String(value.getFullYear()),
+  };
+}
+
+function dayOnly(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function isInBounds(date: Date, minDate?: Date, maxDate?: Date): boolean {
+  const normalized = dayOnly(date);
+  if (minDate && normalized < dayOnly(minDate)) return false;
+  if (maxDate && normalized > dayOnly(maxDate)) return false;
+  return true;
 }
 
 export default function DatePicker({
@@ -16,33 +37,34 @@ export default function DatePicker({
   onChange,
   label,
   required = false,
+  minDate,
   maxDate,
 }: DatePickerProps) {
-  const [month, setMonth] = useState<string>("");
-  const [day, setDay] = useState<string>("");
-  const [year, setYear] = useState<string>("");
+  const initial = partsFromDate(value);
+  const [month, setMonth] = useState<string>(initial.month);
+  const [day, setDay] = useState<string>(initial.day);
+  const [year, setYear] = useState<string>(initial.year);
 
-  // Initialize from value
-  useEffect(() => {
-    if (value && isValid(value)) {
-      setMonth(String(value.getMonth() + 1));
-      setDay(String(value.getDate()));
-      setYear(String(value.getFullYear()));
+  const commit = (nextMonth: string, nextDay: string, nextYear: string) => {
+    if (!nextMonth || !nextDay || !nextYear) {
+      if (!nextMonth && !nextDay && !nextYear) onChange(null);
+      return;
     }
-  }, []);
 
-  // Update parent when any field changes
-  useEffect(() => {
-    if (month && day && year) {
-      const dateStr = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-      const parsed = parse(dateStr, "yyyy-MM-dd", new Date());
-      if (isValid(parsed)) {
-        onChange(parsed);
-      }
-    } else if (!month && !day && !year) {
+    const dateStr = `${nextYear}-${nextMonth.padStart(2, "0")}-${nextDay.padStart(2, "0")}`;
+    const parsed = parse(dateStr, "yyyy-MM-dd", new Date());
+    if (
+      isValid(parsed) &&
+      parsed.getFullYear() === Number(nextYear) &&
+      parsed.getMonth() === Number(nextMonth) - 1 &&
+      parsed.getDate() === Number(nextDay) &&
+      isInBounds(parsed, minDate, maxDate)
+    ) {
+      onChange(parsed);
+    } else {
       onChange(null);
     }
-  }, [month, day, year, onChange]);
+  };
 
   const months = [
     { value: "1", label: "January" },
@@ -59,14 +81,31 @@ export default function DatePicker({
     { value: "12", label: "December" },
   ];
 
-  // Birth-date range: today back ~20 years. The CDC growth reference covers
-  // 0-240 months (0-20 years), so anything older than ~20 years ago is
-  // outside the chart's domain anyway.
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 21 }, (_, i) => currentYear - i);
+  const today = new Date();
+  const maxYear = maxDate ? maxDate.getFullYear() : today.getFullYear();
+  const minYear = minDate ? minDate.getFullYear() : maxYear - 20;
+  const years = Array.from(
+    { length: Math.max(1, maxYear - minYear + 1) },
+    (_, i) => maxYear - i
+  );
 
-  const daysInMonth = month && year ? getDaysInMonth(new Date(parseInt(year), parseInt(month) - 1)) : 31;
+  const daysInMonth =
+    month && year
+      ? getDaysInMonth(new Date(Number(year), Number(month) - 1))
+      : 31;
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  const selectedDate =
+    month && day && year
+      ? parse(
+          `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`,
+          "yyyy-MM-dd",
+          new Date()
+        )
+      : null;
+  const outOfBounds =
+    selectedDate &&
+    isValid(selectedDate) &&
+    !isInBounds(selectedDate, minDate, maxDate);
 
   return (
     <div>
@@ -77,7 +116,19 @@ export default function DatePicker({
       <div className="grid grid-cols-3 gap-2">
         <select
           value={month}
-          onChange={(e) => setMonth(e.target.value)}
+          onChange={(e) => {
+            const nextMonth = e.target.value;
+            const nextDay =
+              day &&
+              year &&
+              Number(day) >
+                getDaysInMonth(new Date(Number(year), Number(nextMonth) - 1))
+                ? ""
+                : day;
+            setMonth(nextMonth);
+            setDay(nextDay);
+            commit(nextMonth, nextDay, year);
+          }}
           required={required}
           className="w-full px-3 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition"
         >
@@ -91,7 +142,11 @@ export default function DatePicker({
 
         <select
           value={day}
-          onChange={(e) => setDay(e.target.value)}
+          onChange={(e) => {
+            const nextDay = e.target.value;
+            setDay(nextDay);
+            commit(month, nextDay, year);
+          }}
           required={required}
           className="w-full px-3 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition"
         >
@@ -105,7 +160,19 @@ export default function DatePicker({
 
         <select
           value={year}
-          onChange={(e) => setYear(e.target.value)}
+          onChange={(e) => {
+            const nextYear = e.target.value;
+            const nextDay =
+              day &&
+              month &&
+              Number(day) >
+                getDaysInMonth(new Date(Number(nextYear), Number(month) - 1))
+                ? ""
+                : day;
+            setYear(nextYear);
+            setDay(nextDay);
+            commit(month, nextDay, nextYear);
+          }}
           required={required}
           className="w-full px-3 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition"
         >
@@ -117,7 +184,13 @@ export default function DatePicker({
           ))}
         </select>
       </div>
+      {outOfBounds && (
+        <p className="mt-2 text-xs text-red-600 dark:text-red-400">
+          Date must be between{" "}
+          {minDate ? minDate.toLocaleDateString() : "the supported start date"}{" "}
+          and {maxDate ? maxDate.toLocaleDateString() : "today"}.
+        </p>
+      )}
     </div>
   );
 }
-

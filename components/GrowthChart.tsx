@@ -118,7 +118,6 @@ export default function GrowthChart({
     p10: number;
     p50: number;
     p90: number;
-    measurement?: number;
   };
   const chartData: Row[] = [];
   for (let age = chartMin; age <= chartMax + 1e-6; age += step) {
@@ -133,17 +132,13 @@ export default function GrowthChart({
     });
   }
 
-  // Stamp measurement points onto the nearest curve row.
-  for (const m of relevant) {
+  const measurementData = relevant.map((m) => {
     const canonical = valueFor(m, type)!;
-    const displayVal = toDisplayValue(canonical, type, units);
-    const closest = chartData.reduce((best, row) =>
-      Math.abs(row.age - m.ageMonths) < Math.abs(best.age - m.ageMonths) ? row : best
-    , chartData[0]);
-    if (closest && Math.abs(closest.age - m.ageMonths) < step) {
-      closest.measurement = Math.round(displayVal * 100) / 100;
-    }
-  }
+    return {
+      age: Math.round(m.ageMonths * 100) / 100,
+      measurement: Math.round(toDisplayValue(canonical, type, units) * 100) / 100,
+    };
+  });
 
   // Build a per-measurement details list.
   const points = relevant.map((m) => {
@@ -222,7 +217,7 @@ export default function GrowthChart({
             dot={false} name="90th percentile" strokeDasharray="5 5"
             isAnimationActive={false} connectNulls />
 
-          <Scatter dataKey="measurement" fill="#8b5cf6" name="Your child"
+          <Scatter data={measurementData} dataKey="measurement" fill="#8b5cf6" name="Your child"
             shape="circle" isAnimationActive={false} r={8}
             stroke="#6d28d9" strokeWidth={2} />
         </ComposedChart>

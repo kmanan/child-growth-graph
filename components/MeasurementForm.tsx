@@ -11,16 +11,45 @@ import {
 } from "@/lib/growthCalculations";
 import DatePicker from "./DatePicker";
 
+type ChildInfo = {
+  name: string;
+  sex: "male" | "female";
+  birthDate: Date | null;
+};
+
 interface MeasurementFormProps {
-  childInfo: {
-    name: string;
-    sex: "male" | "female";
-    birthDate: Date | null;
-  };
-  setChildInfo: (info: any) => void;
+  childInfo: ChildInfo;
+  setChildInfo: (info: ChildInfo) => void;
   units: UnitSystem;
   setUnits: (u: UnitSystem) => void;
   onAddMeasurement: (measurement: MeasurementData) => void;
+}
+
+function formatDateValue(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function dateFromValue(value: string): Date | null {
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return null;
+  const date = new Date(year, month - 1, day);
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+  return date;
+}
+
+function parsePositive(value: string): number | undefined {
+  if (value.trim() === "") return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : NaN;
 }
 
 export default function MeasurementForm({
@@ -30,9 +59,8 @@ export default function MeasurementForm({
   setUnits,
   onAddMeasurement,
 }: MeasurementFormProps) {
-  const [measurementDate, setMeasurementDate] = useState(
-    new Date().toISOString().split("T")[0]
-  );
+  const [measurementDate, setMeasurementDate] = useState(formatDateValue(new Date()));
+  const [error, setError] = useState<string | null>(null);
   // Metric inputs
   const [weightKg, setWeightKg] = useState("");
   const [lengthCm, setLengthCm] = useState("");
@@ -55,11 +83,28 @@ export default function MeasurementForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+
     if (!childInfo.birthDate) {
-      alert("Please enter birth date first");
+      setError("Please enter a valid birth date first.");
       return;
     }
-    const date = new Date(measurementDate);
+
+    const date = dateFromValue(measurementDate);
+    const today = new Date();
+    if (!date) {
+      setError("Please enter a valid measurement date.");
+      return;
+    }
+    if (date < childInfo.birthDate) {
+      setError("Measurement date cannot be before birth date.");
+      return;
+    }
+    if (date > new Date(today.getFullYear(), today.getMonth(), today.getDate())) {
+      setError("Measurement date cannot be in the future.");
+      return;
+    }
+
     const ageMonths = getAgeInMonths(childInfo.birthDate, date);
 
     let weight: number | undefined;
@@ -67,15 +112,36 @@ export default function MeasurementForm({
     let head: number | undefined;
 
     if (units === "metric") {
-      if (weightKg) weight = parseFloat(weightKg);
-      if (lengthCm) length = parseFloat(lengthCm);
-      if (headCm) head = parseFloat(headCm);
+      weight = parsePositive(weightKg);
+      length = parsePositive(lengthCm);
+      head = parsePositive(headCm);
     } else {
-      const lb = weightLb ? parseFloat(weightLb) : 0;
-      const oz = weightOz ? parseFloat(weightOz) : 0;
-      if (weightLb || weightOz) weight = lbToKg(lb + oz / 16);
-      if (lengthIn) length = inToCm(parseFloat(lengthIn));
-      if (headIn) head = inToCm(parseFloat(headIn));
+      const lb = parsePositive(weightLb);
+      const oz = parsePositive(weightOz);
+      if (Number.isNaN(lb) || Number.isNaN(oz)) {
+        setError("Weight must use positive numbers.");
+        return;
+      }
+      if (oz !== undefined && oz >= 16) {
+        setError("Ounces must be less than 16.");
+        return;
+      }
+      if (lb !== undefined || oz !== undefined) {
+        weight = lbToKg((lb ?? 0) + (oz ?? 0) / 16);
+      }
+      const lengthValue = parsePositive(lengthIn);
+      const headValue = parsePositive(headIn);
+      length = lengthValue === undefined ? undefined : inToCm(lengthValue);
+      head = headValue === undefined ? undefined : inToCm(headValue);
+    }
+
+    if ([weight, length, head].some(Number.isNaN)) {
+      setError("Measurements must use positive numbers.");
+      return;
+    }
+    if (weight === undefined && length === undefined && head === undefined) {
+      setError("Enter at least one measurement.");
+      return;
     }
 
     onAddMeasurement({
@@ -133,12 +199,12 @@ export default function MeasurementForm({
         </div>
 
         <DatePicker
+          key={childInfo.birthDate ? childInfo.birthDate.toISOString() : "birth-empty"}
           value={childInfo.birthDate}
-          onChange={(date) =>
-            setChildInfo({ ...childInfo, birthDate: date })
-          }
+          onChange={(date) => setChildInfo({ ...childInfo, birthDate: date })}
           label="Birth Date"
           required
+          maxDate={new Date()}
         />
 
         <div>
@@ -184,12 +250,12 @@ export default function MeasurementForm({
         </h3>
 
         <DatePicker
-          value={measurementDate ? new Date(measurementDate) : null}
-          onChange={(date) =>
-            setMeasurementDate(date ? date.toISOString().split("T")[0] : "")
-          }
+          key={`measurement-${measurementDate}-${childInfo.birthDate?.toISOString() ?? "no-birth"}`}
+          value={dateFromValue(measurementDate)}
+          onChange={(date) => setMeasurementDate(date ? formatDateValue(date) : "")}
           label="Measurement Date"
           required
+          minDate={childInfo.birthDate ?? undefined}
           maxDate={new Date()}
         />
 
@@ -202,6 +268,7 @@ export default function MeasurementForm({
               <input
                 type="number"
                 step="0.01"
+                min="0"
                 value={weightKg}
                 onChange={(e) => setWeightKg(e.target.value)}
                 className={inputClass}
@@ -215,6 +282,7 @@ export default function MeasurementForm({
               <input
                 type="number"
                 step="0.1"
+                min="0"
                 value={lengthCm}
                 onChange={(e) => setLengthCm(e.target.value)}
                 className={inputClass}
@@ -228,6 +296,7 @@ export default function MeasurementForm({
               <input
                 type="number"
                 step="0.1"
+                min="0"
                 value={headCm}
                 onChange={(e) => setHeadCm(e.target.value)}
                 className={inputClass}
@@ -271,6 +340,7 @@ export default function MeasurementForm({
                 <input
                   type="number"
                   step="0.1"
+                  min="0"
                   value={lengthIn}
                   onChange={(e) => setLengthIn(e.target.value)}
                   className={inputClass}
@@ -284,6 +354,7 @@ export default function MeasurementForm({
                 <input
                   type="number"
                   step="0.1"
+                  min="0"
                   value={headIn}
                   onChange={(e) => setHeadIn(e.target.value)}
                   className={inputClass}
@@ -294,6 +365,12 @@ export default function MeasurementForm({
           </div>
         )}
       </div>
+
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
+          {error}
+        </div>
+      )}
 
       <button
         type="submit"
